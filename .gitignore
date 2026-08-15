@@ -1,0 +1,6 @@
+# Never commit secrets or downloaded media
+docker/wyze-bridge.env
+docker/wyze-tokens/
+www/family_photos/
+__pycache__/
+*.part

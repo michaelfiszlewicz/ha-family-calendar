@@ -1,0 +1,375 @@
+# =============================================================================
+# family_dashboard.yaml  —  Mango-style family wall display (3 rotating screens)
+# =============================================================================
+# This is a full Lovelace view. The easiest way to use it:
+#   Settings -> Dashboards -> (create a new dashboard, e.g. "Family Wall")
+#   -> open it -> top-right pencil -> 3-dot menu -> "Edit in YAML" (or "Raw
+#   configuration editor") -> paste this file's contents.
+#
+# The dashboard shows ONE of three screens at a time, driven by
+# input_number.dashboard_screen (1/2/3). The `state-switch` card swaps content
+# instantly when the rotation automation changes that helper.
+#
+# CUSTOM CARDS REQUIRED (install via HACS — see README §5):
+#   * atomic-calendar-revamp  (month grid + agenda list)
+#   * lovelace-card-mod       (custom CSS: `card_mod:` / `style:` blocks)
+#   * lovelace-state-switch   (the 3-screen switcher)
+#   * browser_mod             (camera popups — used by automations, not here)
+#   * kiosk-mode              (hide header/sidebar — configured at bottom)
+#   * album-slideshow-card    (already installed) — optional alternative to the
+#                             picture cards used below.
+#
+# NOTE ON STATE VALUES: input_number reports its state as "1.0", "2.0", "3.0"
+# (with a trailing .0). The state-switch keys below match that exactly.
+# =============================================================================
+
+title: Family Wall
+views:
+  - title: Wall
+    path: wall
+    type: panel          # panel view = single card fills the whole screen
+    # Woodgrain template background behind everything.
+    background: "center / cover no-repeat url('/local/family_photos/background.jpg')"
+    cards:
+      # =====================================================================
+      # ROOT: switch between the 3 screens based on dashboard_screen helper
+      # =====================================================================
+      - type: custom:state-switch
+        entity: input_number.dashboard_screen
+        transition: swap
+        transition_time: 500
+        states:
+
+          # =================================================================
+          # SCREEN 1  —  Full-screen landscape photo + big clock overlay
+          # =================================================================
+          "1.0":
+            type: picture-elements
+            # The current landscape photo (bound to template sensor attribute).
+            image: /local/family_photos/landscape/placeholder.jpg
+            card_mod:
+              style: |
+                ha-card {
+                  height: 100vh;
+                  border-radius: 0;
+                  box-shadow: none;
+                }
+                /* Bind the picture to the "current photo" sensor attribute. */
+            elements:
+              # ---- Landscape photo (as an <img> element so it can be dynamic) ----
+              - type: image
+                entity: sensor.current_landscape_photo
+                image: >-
+                  {{ state_attr('sensor.current_landscape_photo','image') }}
+                style:
+                  top: 50%
+                  left: 50%
+                  width: 100%
+                  height: 100%
+                  transform: translate(-50%, -50%)
+                  object-fit: cover
+                tap_action:
+                  action: none
+
+              # ---- Clock overlay (top-left) ----
+              - type: custom:button-card
+                entity: sensor.time
+                styles:
+                  card:
+                    - background: "rgba(0,0,0,0.0)"
+                    - box-shadow: none
+                    - position: absolute
+                  grid:
+                    - grid-template-areas: '"time" "day" "date"'
+                template: clock_overlay
+                style:
+                  top: 12%
+                  left: 14%
+
+          # =================================================================
+          # SCREEN 2  —  Month calendar (70%) + portrait photo + clock (30%)
+          #              + camera row + weather
+          # =================================================================
+          "2.0":
+            type: custom:layout-card
+            layout_type: custom:grid-layout
+            layout:
+              grid-template-columns: 68% 30%
+              grid-template-rows: auto 150px
+              grid-template-areas: |
+                "calendar sidebar"
+                "cameras  sidebar"
+              grid-gap: 12px
+              padding: 12px
+              height: 100vh
+            cards:
+              # ---- LEFT: full month calendar grid ----
+              - view_layout:
+                  grid-area: calendar
+                type: custom:atomic-calendar-revamp
+                name: " "
+                showDate: false
+                enableModeChange: false
+                defaultMode: Month           # month grid like Mango
+                firstDayOfWeek: 0            # 0 = Sunday
+                showWeekNumber: false
+                calCellDate: true
+                calShowMonth: true
+                showLocation: false
+                showLoader: false
+                dimFinishedEvents: false
+                calEventTime: false
+                # Color each calendar's events (matches Mango palette).
+                entities:
+                  - entity: calendar.family_icloud
+                    color: "#2e7d32"          # GREEN  - iCloud
+                  - entity: calendar.google_mike
+                    color: "#1565c0"          # BLUE   - Mike
+                  - entity: calendar.google_juno
+                    color: "#4fc3f7"          # CYAN   - Juno
+                  - entity: calendar.us_holidays
+                    color: "#ef6c00"          # ORANGE - US holidays
+                  - entity: calendar.jewish_holidays
+                    color: "#7b1fa2"          # PURPLE - Jewish holidays
+                card_mod:
+                  style: |
+                    ha-card {
+                      background: rgba(255,255,255,0.90);
+                      border-radius: 18px;
+                    }
+
+              # ---- RIGHT SIDEBAR: portrait photo (top) + greeting/clock (bottom) ----
+              - view_layout:
+                  grid-area: sidebar
+                type: vertical-stack
+                cards:
+                  # Portrait photo
+                  - type: picture-entity
+                    entity: sensor.current_portrait_photo
+                    camera_view: auto
+                    show_name: false
+                    show_state: false
+                    image: >-
+                      {{ state_attr('sensor.current_portrait_photo','image') }}
+                    card_mod:
+                      style: |
+                        ha-card {
+                          height: 62vh;
+                          border-radius: 18px;
+                          overflow: hidden;
+                        }
+                        ha-card img { object-fit: cover; height: 100%; }
+                  # Greeting + big clock
+                  - type: custom:button-card
+                    entity: sensor.time
+                    template: clock_panel
+                    name: Hello
+
+              # ---- BOTTOM: 3 Ring camera thumbnails ----
+              - view_layout:
+                  grid-area: cameras
+                type: horizontal-stack
+                cards:
+                  - type: picture-entity
+                    entity: camera.driveway_live_view
+                    name: Driveway
+                    camera_view: live
+                    show_state: false
+                  - type: picture-entity
+                    entity: camera.front_door_live_view
+                    name: Front Door
+                    camera_view: live
+                    show_state: false
+                  - type: picture-entity
+                    entity: camera.outside_deck_live_view
+                    name: Deck
+                    camera_view: live
+                    show_state: false
+
+          # =================================================================
+          # SCREEN 3  —  Portrait photo + clock (35%) + 6-day agenda +
+          #              weather (65%) + camera row
+          # =================================================================
+          "3.0":
+            type: custom:layout-card
+            layout_type: custom:grid-layout
+            layout:
+              grid-template-columns: 34% 64%
+              grid-template-rows: auto 150px
+              grid-template-areas: |
+                "left  agenda"
+                "left  weather"
+                "cams  weather"
+              grid-gap: 12px
+              padding: 12px
+              height: 100vh
+            cards:
+              # ---- LEFT: greeting + clock (top) and portrait photo (bottom) ----
+              - view_layout:
+                  grid-area: left
+                type: vertical-stack
+                cards:
+                  - type: custom:button-card
+                    entity: sensor.time
+                    template: clock_panel
+                    name: Hello
+                  - type: picture-entity
+                    entity: sensor.current_portrait_photo
+                    camera_view: auto
+                    show_name: false
+                    show_state: false
+                    image: >-
+                      {{ state_attr('sensor.current_portrait_photo','image') }}
+                    card_mod:
+                      style: |
+                        ha-card {
+                          height: 58vh;
+                          border-radius: 18px;
+                          overflow: hidden;
+                        }
+                        ha-card img { object-fit: cover; height: 100%; }
+
+              # ---- RIGHT TOP: next 6 days agenda list ----
+              - view_layout:
+                  grid-area: agenda
+                type: custom:atomic-calendar-revamp
+                name: " "
+                showDate: false
+                enableModeChange: false
+                defaultMode: Event          # list / agenda mode
+                maxDaysToShow: 6            # next 6 days
+                showLocation: false
+                showRelativeTime: false
+                showCurrentEventLine: true
+                hideFinishedEvents: false
+                showMonth: true
+                sortByStartTime: true
+                untilText: "til"
+                entities:
+                  - entity: calendar.family_icloud
+                    color: "#2e7d32"
+                  - entity: calendar.google_mike
+                    color: "#1565c0"
+                  - entity: calendar.google_juno
+                    color: "#4fc3f7"
+                  - entity: calendar.us_holidays
+                    color: "#ef6c00"
+                  - entity: calendar.jewish_holidays
+                    color: "#7b1fa2"
+                card_mod:
+                  style: |
+                    ha-card {
+                      background: rgba(255,255,255,0.90);
+                      border-radius: 18px;
+                    }
+
+              # ---- RIGHT BOTTOM: weather forecast bar ----
+              - view_layout:
+                  grid-area: weather
+                type: weather-forecast
+                entity: weather.home           # TODO: match your weather entity
+                forecast_type: hourly
+                show_current: true
+                name: Weather
+                card_mod:
+                  style: |
+                    ha-card {
+                      background: rgba(255,255,255,0.90);
+                      border-radius: 18px;
+                    }
+
+              # ---- BOTTOM LEFT: camera thumbnails ----
+              - view_layout:
+                  grid-area: cams
+                type: horizontal-stack
+                cards:
+                  - type: picture-entity
+                    entity: camera.driveway_live_view
+                    name: Driveway
+                    camera_view: live
+                    show_state: false
+                  - type: picture-entity
+                    entity: camera.front_door_live_view
+                    name: Front Door
+                    camera_view: live
+                    show_state: false
+                  - type: picture-entity
+                    entity: camera.outside_deck_live_view
+                    name: Deck
+                    camera_view: live
+                    show_state: false
+
+# =============================================================================
+# BUTTON-CARD TEMPLATES  (referenced above as template: clock_overlay / clock_panel)
+# =============================================================================
+# These require the `custom:button-card` card (HACS). They render the big time,
+# day-of-week and date used on all three screens. `sensor.time` and
+# `sensor.date` come from the built-in Time & Date integration (add it via
+# Settings -> Devices & Services -> Time & Date, enabling "time" and "date").
+button_card_templates:
+
+  # Big translucent clock used as an overlay on Screen 1.
+  clock_overlay:
+    show_icon: false
+    show_name: false
+    show_label: true
+    label: |
+      [[[
+        var now = new Date();
+        var t = now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+        var day = now.toLocaleDateString('en-US',{weekday:'long'});
+        var date = now.toLocaleDateString('en-US',{month:'long',day:'numeric'});
+        return `<div class="clk">${t}</div><div class="dy">${day}, ${date}</div>`;
+      ]]]
+    styles:
+      card:
+        - background: none
+        - box-shadow: none
+        - border: none
+      label:
+        - color: "#2f6bd6"
+        - text-shadow: "0 2px 8px rgba(0,0,0,0.55)"
+        - font-weight: "800"
+        - text-align: left
+    extra_styles: |
+      .clk { font-size: 64px; line-height: 1; }
+      .dy  { font-size: 24px; margin-top: 6px; }
+
+  # Greeting + clock panel used in the sidebars of Screens 2 & 3.
+  clock_panel:
+    show_icon: false
+    show_name: true
+    show_label: true
+    label: |
+      [[[
+        var now = new Date();
+        var t = now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+        var day = now.toLocaleDateString('en-US',{weekday:'long'});
+        var date = now.toLocaleDateString('en-US',{month:'long',day:'numeric'});
+        return `<div class="clk">${t}</div><div class="dy">${day}, ${date}</div>`;
+      ]]]
+    styles:
+      card:
+        - background: "rgba(255,255,255,0.85)"
+        - border-radius: 18px
+        - padding: 12px
+      name:
+        - font-size: 22px
+        - color: "#333"
+        - justify-self: start
+      label:
+        - color: "#222"
+        - text-align: center
+    extra_styles: |
+      .clk { font-size: 56px; line-height: 1; font-weight: 300; }
+      .dy  { font-size: 20px; margin-top: 4px; }
+
+# =============================================================================
+# KIOSK MODE  (hide the HA header + sidebar on the wall display)
+# =============================================================================
+# Requires the "kiosk-mode" HACS plugin. This block lives at the TOP LEVEL of
+# the dashboard's raw config (same indentation as `title:` / `views:`).
+kiosk_mode:
+  hide_header: true
+  hide_sidebar: true
+  ignore_entity_settings: false
