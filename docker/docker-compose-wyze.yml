@@ -1,0 +1,71 @@
+# =============================================================================
+# docker-compose-wyze.yml  —  Wyze Bridge (IDisposable fork)
+# =============================================================================
+# Wyze v4 cameras have NO official RTSP firmware and NO official live-video API
+# (the Wyze "Developer API" key is only used for LOGIN/auth). The only way to
+# get a live stream is a bridge that logs into the Wyze cloud and re-publishes
+# each camera as RTSP / HLS / WebRTC that Home Assistant can read.
+#
+# WHY THE *IDisposable* FORK (not the original mrlt8 image):
+#   Recent Wyze v4 firmware broke the old TUTK P2P protocol. The IDisposable
+#   fork adds an automatic WebRTC (KVS) fallback for v4 cams, which is what
+#   makes them work on current firmware.
+#
+# -----------------------------------------------------------------------------
+# IMPORTANT — YOUR ISOLATED-NETWORK SETUP:
+#   The bridge does NOT need a local route to your cameras. It reaches each
+#   camera OVER THE INTERNET through the Wyze cloud (P2P / relay / WebRTC).
+#   All that's required is:
+#       * this bridge host has internet   (your HA subnet does)
+#       * the cameras have internet       (your isolated IoT VLAN allows that)
+#   That's why we set NET_MODE=P2P below — it SKIPS local LAN discovery (which
+#   can't work across your isolated VLAN) and connects straight over the net.
+#
+#   => Run this bridge right on your HA host / HA subnet. It does NOT need to
+#      touch the isolated camera VLAN at all.
+# -----------------------------------------------------------------------------
+#
+# QUICK START
+#   1. Copy wyze-bridge.env.example  ->  wyze-bridge.env  and fill in creds.
+#   2. docker compose -f docker-compose-wyze.yml up -d
+#   3. Open http://<bridge-host>:5000  to see the web UI and confirm cameras.
+#   4. Each camera is available at:
+#        rtsp://<bridge-host>:8554/<camera-nickname-lowercased-with-dashes>
+#      Add these to Home Assistant as Generic Camera entities (see README §9).
+# =============================================================================
+
+services:
+  wyze-bridge:
+    container_name: wyze-bridge
+    # IDisposable fork — has the v4 WebRTC fallback for current firmware.
+    image: idisposablegithub365/wyze-bridge:latest
+    restart: unless-stopped
+    # Load your Wyze credentials + API keys from the env file (never commit it).
+    env_file:
+      - wyze-bridge.env
+    ports:
+      - "5000:5000"      # Web UI  (http://<host>:5000)
+      - "8554:8554"      # RTSP    (rtsp://<host>:8554/<cam>)
+      - "8888:8888"      # HLS     (http://<host>:8888/<cam>/)
+      - "8889:8889"      # WebRTC
+      - "8189:8189/udp"  # WebRTC/ICE
+    environment:
+      # ---- Connection mode (CRITICAL for your isolated setup) ----
+      # P2P = connect to cameras over the internet via the Wyze cloud and
+      #       SKIP local LAN discovery (which can't reach your isolated VLAN).
+      # Use "ANY" only if the bridge is on the SAME LAN as the cameras.
+      NET_MODE: "P2P"
+      # ---- Streaming quality / behavior ----
+      WB_IP: ""                       # optional: set host LAN IP for WebRTC
+      QUALITY: "HD180"                # HD/SD + fps (e.g. HD180 = HD @ ~15fps)
+      ROTATE_DOOR: "false"
+      # Keep streams warm so HA thumbnails load instantly (optional).
+      # SNAPSHOT: "RTSP30"
+      # ---- Only publish specific cameras (optional) ----
+      # FILTER_NAMES: "Backyard, Garage, Side Gate"
+    volumes:
+      # Persist tokens so you aren't re-authenticating every restart.
+      - ./wyze-tokens:/tokens
+    # NOTE: Do NOT use `network_mode: host` here. Host networking only helps
+    # when the bridge shares the cameras' LAN — yours doesn't. The published
+    # `ports:` above are what HA (on the same subnet as this bridge) will use.

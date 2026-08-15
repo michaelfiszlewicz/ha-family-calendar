@@ -1,0 +1,85 @@
+# =============================================================================
+# camera_overlay.yaml  —  Pop up a big camera feed on doorbell / motion
+# =============================================================================
+# HOW IT WORKS
+#   * Uses browser_mod's `browser_mod.popup` service to overlay a large live
+#     camera view on the wall display.
+#   * Triggers:
+#       - Doorbell ding  (event.front_door_ding)
+#       - Motion on any Ring camera (binary_sensor.*_motion — adjust to match
+#         your actual motion entities)
+#   * The popup auto-dismisses after 30 seconds (timeout: 30000 ms) OR when
+#     the user taps "Close".
+#
+# REQUIREMENTS
+#   * HACS integration/card: browser_mod (by @thomasloven)
+#   * Give your wall display a stable browser id in browser_mod so the popup
+#     targets the right screen. Set browser_id below (see README section 8).
+#
+# TODO: replace WALL_DISPLAY_BROWSER_ID with your kiosk browser's ID, or remove
+#       the `browser_id` line to pop up on ALL registered browsers.
+# =============================================================================
+
+# ---- 1) Doorbell ding -> show Front Door camera --------------------------------
+- id: camera_popup_doorbell
+  alias: "Camera - Popup on doorbell ding"
+  mode: restart          # a new ding restarts the 30s timer
+  trigger:
+    - platform: state
+      entity_id: event.front_door_ding
+      # Any state change of the event entity means the button was pressed.
+  condition:
+    # Ignore the "unknown"/startup transition.
+    - condition: template
+      value_template: "{{ trigger.to_state.state not in ['unknown', 'unavailable', 'none'] }}"
+  action:
+    - service: browser_mod.popup
+      data:
+        # browser_id: WALL_DISPLAY_BROWSER_ID   # TODO: uncomment + set your id
+        title: "🔔 Someone's at the Front Door"
+        timeout: 30000        # auto-close after 30 seconds
+        dismissable: true
+        size: wide
+        content:
+          type: picture-entity
+          entity: camera.front_door_live_view
+          camera_view: live
+          show_state: false
+          show_name: false
+
+
+# ---- 2) Motion on any Ring camera -> show that camera --------------------------
+# Each Ring camera typically exposes a motion binary_sensor. Update the
+# entity_ids below to match yours (Settings -> Devices & Services -> Ring).
+- id: camera_popup_motion
+  alias: "Camera - Popup on Ring motion"
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id:
+        - binary_sensor.driveway_motion       # TODO: verify entity name
+        - binary_sensor.front_door_motion      # TODO: verify entity name
+        - binary_sensor.outside_deck_motion    # TODO: verify entity name
+      to: "on"
+  action:
+    # Map the triggering motion sensor to its matching camera entity.
+    - variables:
+        cam_map:
+          binary_sensor.driveway_motion: camera.driveway_live_view
+          binary_sensor.front_door_motion: camera.front_door_live_view
+          binary_sensor.outside_deck_motion: camera.outside_deck_live_view
+        cam: "{{ cam_map[trigger.entity_id] }}"
+        cam_name: "{{ trigger.to_state.attributes.friendly_name | default('Camera') }}"
+    - service: browser_mod.popup
+      data:
+        # browser_id: WALL_DISPLAY_BROWSER_ID   # TODO: uncomment + set your id
+        title: "👀 Motion: {{ cam_name }}"
+        timeout: 30000
+        dismissable: true
+        size: wide
+        content:
+          type: picture-entity
+          entity: "{{ cam }}"
+          camera_view: live
+          show_state: false
+          show_name: false

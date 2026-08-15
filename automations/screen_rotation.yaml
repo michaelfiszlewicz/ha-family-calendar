@@ -1,0 +1,68 @@
+# =============================================================================
+# screen_rotation.yaml  —  Rotate the 3 dashboard screens every 20 seconds
+# =============================================================================
+# HOW IT WORKS
+#   * input_number.dashboard_screen holds the current screen (1 -> 2 -> 3 -> 1).
+#   * Every 20 seconds this automation advances it (wrapping 3 back to 1).
+#   * The Lovelace dashboard uses `state-switch` bound to this helper to show
+#     the matching screen — no page reload needed.
+#   * Each time we wrap the whole cycle we also advance the photo slideshow
+#     indexes so the family photos change over time.
+#   * Rotation only runs while input_boolean.dashboard_rotate is ON, so you can
+#     pause it any time.
+#
+# Paste this into automations.yaml (as a list item) or drop the file into
+# /config/automations/ if you use `!include_dir_merge_list automations/`.
+# =============================================================================
+
+- id: dashboard_screen_rotation
+  alias: "Dashboard - Rotate screens every 20s"
+  description: "Cycle input_number.dashboard_screen 1->2->3 every 20 seconds."
+  mode: single
+  trigger:
+    # Fires at :00, :20, :40 of every minute.
+    - platform: time_pattern
+      seconds: "/20"
+  condition:
+    # Respect the pause switch.
+    - condition: state
+      entity_id: input_boolean.dashboard_rotate
+      state: "on"
+  action:
+    - variables:
+        current: "{{ states('input_number.dashboard_screen') | int(1) }}"
+        next_screen: "{{ 1 if current >= 3 else current + 1 }}"
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dashboard_screen
+      data:
+        value: "{{ next_screen }}"
+    # When we wrap back to screen 1, advance both photo slideshows by one.
+    - if:
+        - condition: template
+          value_template: "{{ next_screen == 1 }}"
+      then:
+        - service: input_number.increment
+          target:
+            entity_id: input_number.photo_index_landscape
+        - service: input_number.increment
+          target:
+            entity_id: input_number.photo_index_portrait
+
+
+# -----------------------------------------------------------------------------
+# Optional: make sure we always START on screen 1 after a Home Assistant reboot
+# (so the wall display is predictable when the Pi/HA restarts).
+# -----------------------------------------------------------------------------
+- id: dashboard_reset_on_start
+  alias: "Dashboard - Reset to screen 1 on startup"
+  mode: single
+  trigger:
+    - platform: homeassistant
+      event: start
+  action:
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dashboard_screen
+      data:
+        value: 1

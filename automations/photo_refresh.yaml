@@ -1,0 +1,50 @@
+# =============================================================================
+# photo_refresh.yaml  —  Re-download iCloud shared album photos
+# =============================================================================
+# HOW IT WORKS
+#   * Runs the shell_command.fetch_icloud_photos command (defined in
+#     configuration_additions.yaml), which executes scripts/icloud_photos.py.
+#   * Runs daily at 4:00 AM and once shortly after Home Assistant starts, so
+#     newly added family photos appear on the display automatically.
+#   * After fetching, it refreshes the command_line index sensors so the new
+#     photos are picked up without waiting for the next scan interval.
+# =============================================================================
+
+# ---- Daily refresh at 4:00 AM --------------------------------------------------
+- id: photos_refresh_daily
+  alias: "Photos - Refresh iCloud albums daily (4 AM)"
+  mode: single
+  trigger:
+    - platform: time
+      at: "04:00:00"
+  action:
+    - service: shell_command.fetch_icloud_photos
+    # Give the download a moment, then refresh the index sensors.
+    - delay: "00:00:05"
+    - service: homeassistant.update_entity
+      target:
+        entity_id:
+          - sensor.landscape_index
+          - sensor.portrait_index
+          - sensor.landscape_photo_count
+          - sensor.portrait_photo_count
+
+
+# ---- Refresh once, ~1 minute after HA starts -----------------------------------
+- id: photos_refresh_on_start
+  alias: "Photos - Refresh iCloud albums on startup"
+  mode: single
+  trigger:
+    - platform: homeassistant
+      event: start
+  action:
+    - delay: "00:01:00"     # let integrations finish loading first
+    - service: shell_command.fetch_icloud_photos
+    - delay: "00:00:05"
+    - service: homeassistant.update_entity
+      target:
+        entity_id:
+          - sensor.landscape_index
+          - sensor.portrait_index
+          - sensor.landscape_photo_count
+          - sensor.portrait_photo_count

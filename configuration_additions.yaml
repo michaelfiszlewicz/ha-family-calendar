@@ -1,0 +1,222 @@
+# =============================================================================
+# configuration_additions.yaml
+# =============================================================================
+# These snippets go into your Home Assistant `configuration.yaml`
+# (Settings -> the file, or edit via the File Editor / Studio Code Server add-on).
+#
+# Copy each block into the matching top-level key. If a key (e.g. `calendar:`)
+# already exists in your configuration.yaml, MERGE the entries instead of adding
+# a second key — YAML does not allow the same top-level key twice.
+#
+# After editing: Developer Tools -> YAML -> "Check Configuration", then
+# "Restart" Home Assistant.
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# 1) CALENDARS  (ICS / iCal subscriptions)
+# -----------------------------------------------------------------------------
+# The built-in "Calendar (ical)" integration polls remote .ics feeds and
+# exposes each as a calendar.* entity that the dashboard's calendar card reads.
+#
+# NOTE: the iCloud URL below is the user's `webcal://` link converted to
+# `https://` (webcal is just http(s) under the hood).
+#
+# Each of these becomes an entity named `calendar.<name lowercased_with_underscores>`,
+# e.g. "Family iCloud" -> calendar.family_icloud
+calendar:
+  - platform: ics
+    calendars:
+      # ---- iCloud shared family calendar (events shown GREEN) ----
+      - name: "Family iCloud"
+        url: "https://p163-caldav.icloud.com/published/2/MTkxODg2MDI3MTkxODg2MNjt1K-Pib_cEY0cSL6NHgnXGQuroC2QtdwtNbb1E02O"
+
+      # ---- Google calendar: Mike (events shown BLUE) ----
+      - name: "Google Mike"
+        url: "https://calendar.google.com/calendar/ical/fearlessfish%40gmail.com/private-568d8bfc519fa9af166d893cfd60254f/basic.ics"
+
+      # ---- Google calendar: Juno (events shown CYAN / light blue) ----
+      - name: "Google Juno"
+        url: "https://calendar.google.com/calendar/ical/carnmvl1qqm87auvsbq5lu8kgc%40group.calendar.google.com/private-f0c37e2834dabe6acd34efc3ced20e35/basic.ics"
+
+      # ---- US Holidays (events shown ORANGE) ----
+      - name: "US Holidays"
+        url: "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics"
+
+      # ---- Jewish Holidays (events shown PURPLE) ----
+      - name: "Jewish Holidays"
+        url: "https://calendar.google.com/calendar/ical/r3vciojt1tvevn977subefld78%40group.calendar.google.com/public/basic.ics"
+
+# NOTE ON THE `ics` PLATFORM:
+#   Home Assistant core does NOT ship a generic `ics` calendar platform by
+#   default. Install the excellent HACS integration
+#   "ICS Calendar (ical)" by @franc6  (repo: franc6/ics_calendar).
+#   It provides exactly the `platform: ics` shown above.
+#
+#   ALTERNATIVE (no HACS): use the built-in "Remote Calendar" integration
+#   (Settings -> Devices & Services -> Add -> "Remote Calendar") and add each
+#   URL through the UI. That also creates calendar.* entities you can point the
+#   dashboard at — just update the entity names in family_dashboard.yaml.
+
+
+# -----------------------------------------------------------------------------
+# 2) WEATHER  (Open-Meteo — free, no API key)
+# -----------------------------------------------------------------------------
+# Preferred: add Open-Meteo via the UI (Settings -> Devices & Services -> Add
+# Integration -> "Open-Meteo"). It will create a weather.* entity.
+# Liberty Township, OH 45050  ->  lat 39.3778, lon -84.3591
+#
+# The dashboard expects an entity called `weather.home` (or edit the dashboard
+# to match whatever name your integration produces, e.g. weather.openmeteo).
+
+
+# -----------------------------------------------------------------------------
+# 3) INPUT HELPERS  (screen rotation + photo slideshow index)
+# -----------------------------------------------------------------------------
+input_number:
+  # Which of the 3 screens is currently shown (1, 2, or 3).
+  dashboard_screen:
+    name: Dashboard Screen
+    min: 1
+    max: 3
+    step: 1
+    mode: box
+    icon: mdi:monitor-dashboard
+
+  # Rolling index used to advance the landscape photo slideshow.
+  photo_index_landscape:
+    name: Photo Index Landscape
+    min: 0
+    max: 9999
+    step: 1
+    mode: box
+    icon: mdi:image-multiple
+
+  # Rolling index used to advance the portrait photo slideshow.
+  photo_index_portrait:
+    name: Photo Index Portrait
+    min: 0
+    max: 9999
+    step: 1
+    mode: box
+    icon: mdi:image-multiple
+
+input_boolean:
+  # Flip OFF to pause the automatic 20-second screen rotation (handy while
+  # you're setting things up or want to stare at the calendar).
+  dashboard_rotate:
+    name: Dashboard Auto-Rotate
+    initial: true
+    icon: mdi:rotate-3d-variant
+
+
+# -----------------------------------------------------------------------------
+# 4) SHELL COMMAND  (runs the iCloud photo downloader)
+# -----------------------------------------------------------------------------
+# Place icloud_photos.py at /config/scripts/icloud_photos.py (see README).
+# The script writes into /config/www/family_photos/ which HA serves at /local/.
+shell_command:
+  fetch_icloud_photos: "python3 /config/scripts/icloud_photos.py --output /config/www/family_photos"
+
+
+# -----------------------------------------------------------------------------
+# 5) TEMPLATE SENSORS  (current photo path for each slideshow)
+# -----------------------------------------------------------------------------
+# These read the index.json files written by icloud_photos.py and expose the
+# "current" photo (based on the rolling index above), so the picture cards can
+# bind to a single sensor and simply update when the index changes.
+#
+# Requires the `command_line` + `template` integrations (both built in).
+template:
+  - trigger:
+      # Recompute whenever the slideshow index changes or HA starts.
+      - platform: state
+        entity_id:
+          - input_number.photo_index_landscape
+          - input_number.photo_index_portrait
+      - platform: homeassistant
+        event: start
+      - platform: time_pattern
+        minutes: "/5"   # also refresh periodically in case photos changed
+    sensor:
+      - name: "Current Landscape Photo"
+        unique_id: current_landscape_photo
+        state: >
+          {% set p = states('sensor.landscape_photo_count') | int(0) %}
+          {{ p }}
+        # The picture card actually uses the attribute below.
+        attributes:
+          image: >
+            {%- set idx = states('input_number.photo_index_landscape') | int(0) -%}
+            {%- set data = state_attr('sensor.landscape_index','photos') -%}
+            {%- if data and data | length > 0 -%}
+              {{ data[idx % (data | length)].file }}
+            {%- else -%}
+              /local/family_photos/landscape/placeholder.jpg
+            {%- endif -%}
+      - name: "Current Portrait Photo"
+        unique_id: current_portrait_photo
+        state: >
+          {% set p = states('sensor.portrait_photo_count') | int(0) %}
+          {{ p }}
+        attributes:
+          image: >
+            {%- set idx = states('input_number.photo_index_portrait') | int(0) -%}
+            {%- set data = state_attr('sensor.portrait_index','photos') -%}
+            {%- if data and data | length > 0 -%}
+              {{ data[idx % (data | length)].file }}
+            {%- else -%}
+              /local/family_photos/portrait/placeholder.jpg
+            {%- endif -%}
+
+
+# -----------------------------------------------------------------------------
+# 6) COMMAND-LINE SENSORS  (load index.json produced by the photo script)
+# -----------------------------------------------------------------------------
+# These read the JSON index files so the template sensors above can enumerate
+# photos. `value_template` keeps the state short (the count) while the full
+# photo list is exposed as the `photos` attribute.
+command_line:
+  - sensor:
+      name: "Landscape Index"
+      unique_id: landscape_index
+      command: "cat /config/www/family_photos/landscape/index.json 2>/dev/null || echo '{\"count\":0,\"photos\":[]}'"
+      value_template: "{{ value_json.count }}"
+      json_attributes:
+        - photos
+      scan_interval: 300
+
+  - sensor:
+      name: "Portrait Index"
+      unique_id: portrait_index
+      command: "cat /config/www/family_photos/portrait/index.json 2>/dev/null || echo '{\"count\":0,\"photos\":[]}'"
+      value_template: "{{ value_json.count }}"
+      json_attributes:
+        - photos
+      scan_interval: 300
+
+  - sensor:
+      name: "Landscape Photo Count"
+      unique_id: landscape_photo_count
+      command: "cat /config/www/family_photos/landscape/index.json 2>/dev/null || echo '{\"count\":0}'"
+      value_template: "{{ value_json.count }}"
+      scan_interval: 300
+
+  - sensor:
+      name: "Portrait Photo Count"
+      unique_id: portrait_photo_count
+      command: "cat /config/www/family_photos/portrait/index.json 2>/dev/null || echo '{\"count\":0}'"
+      value_template: "{{ value_json.count }}"
+      scan_interval: 300
+
+
+# -----------------------------------------------------------------------------
+# 7) INCLUDE THE AUTOMATIONS
+# -----------------------------------------------------------------------------
+# If you use the default `automation: !include automations.yaml`, either paste
+# the contents of the files in ./automations/ into automations.yaml, OR switch
+# to a directory include and drop the files in /config/automations/:
+#
+#   automation manual: !include_dir_merge_list automations/
+#
+# See README section 6 for the exact steps.
