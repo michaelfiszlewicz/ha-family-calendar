@@ -217,6 +217,6 @@ command_line:
 # the contents of the files in ./automations/ into automations.yaml, OR switch
 # to a directory include and drop the files in /config/automations/:
 #
-#   automation manual: !include_dir_merge_list automations/
+#   automation: !include_dir_merge_list automations/
 #
 # See README section 6 for the exact steps.
