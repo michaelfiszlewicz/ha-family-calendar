@@ -16,47 +16,28 @@
 # -----------------------------------------------------------------------------
 # 1) CALENDARS  (ICS / iCal subscriptions)
 # -----------------------------------------------------------------------------
-# The built-in "Calendar (ical)" integration polls remote .ics feeds and
-# exposes each as a calendar.* entity that the dashboard's calendar card reads.
+# *** YOU ARE USING THE BUILT-IN "Remote Calendar" INTEGRATION ***
+# (Settings -> Devices & Services -> Remote Calendar)
+# No YAML calendar block is needed — do NOT add one; it will cause a
+# "Platform error: calendar - Integration 'ics' not found" error.
 #
-# NOTE: the iCloud URL below is the user's `webcal://` link converted to
-# `https://` (webcal is just http(s) under the hood).
+# The dashboard expects these exact entity IDs.  When you added each calendar
+# via the UI, HA auto-generated the entity ID from the name you typed.
+# Check Settings -> Devices & Services -> Remote Calendar -> each entry and
+# make sure the names match (or go to Developer Tools -> States and search
+# "calendar." to see what was created):
 #
-# Each of these becomes an entity named `calendar.<name lowercased_with_underscores>`,
-# e.g. "Family iCloud" -> calendar.family_icloud
-calendar:
-  - platform: ics
-    calendars:
-      # ---- iCloud shared family calendar (events shown GREEN) ----
-      - name: "Family iCloud"
-        url: "https://p163-caldav.icloud.com/published/2/MTkxODg2MDI3MTkxODg2MNjt1K-Pib_cEY0cSL6NHgnXGQuroC2QtdwtNbb1E02O"
-
-      # ---- Google calendar: Mike (events shown BLUE) ----
-      - name: "Google Mike"
-        url: "https://calendar.google.com/calendar/ical/fearlessfish%40gmail.com/private-568d8bfc519fa9af166d893cfd60254f/basic.ics"
-
-      # ---- Google calendar: Juno (events shown CYAN / light blue) ----
-      - name: "Google Juno"
-        url: "https://calendar.google.com/calendar/ical/carnmvl1qqm87auvsbq5lu8kgc%40group.calendar.google.com/private-f0c37e2834dabe6acd34efc3ced20e35/basic.ics"
-
-      # ---- US Holidays (events shown ORANGE) ----
-      - name: "US Holidays"
-        url: "https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics"
-
-      # ---- Jewish Holidays (events shown PURPLE) ----
-      - name: "Jewish Holidays"
-        url: "https://calendar.google.com/calendar/ical/r3vciojt1tvevn977subefld78%40group.calendar.google.com/public/basic.ics"
-
-# NOTE ON THE `ics` PLATFORM:
-#   Home Assistant core does NOT ship a generic `ics` calendar platform by
-#   default. Install the excellent HACS integration
-#   "ICS Calendar (ical)" by @franc6  (repo: franc6/ics_calendar).
-#   It provides exactly the `platform: ics` shown above.
+#   Name typed in UI             Expected entity ID
+#   ─────────────────────────    ──────────────────────────────
+#   "Family iCloud"          ->  calendar.family_icloud
+#   "Google Mike"            ->  calendar.google_mike
+#   "Google Juno"            ->  calendar.google_juno
+#   "US Holidays"            ->  calendar.us_holidays
+#   "Jewish Holidays"        ->  calendar.jewish_holidays
 #
-#   ALTERNATIVE (no HACS): use the built-in "Remote Calendar" integration
-#   (Settings -> Devices & Services -> Add -> "Remote Calendar") and add each
-#   URL through the UI. That also creates calendar.* entities you can point the
-#   dashboard at — just update the entity names in family_dashboard.yaml.
+# If your entity IDs differ (e.g. calendar.remote_calendar or calendar.mike),
+# either rename the integration entries in the UI to match the names above,
+# OR update family_dashboard.yaml to use your actual entity IDs.
 
 
 # -----------------------------------------------------------------------------
