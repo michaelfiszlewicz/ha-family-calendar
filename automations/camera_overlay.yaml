@@ -20,7 +20,7 @@
 #       the `browser_id` line to pop up on ALL registered browsers.
 # =============================================================================
 
-# ---- 1) Doorbell ding -> show Front Door camera --------------------------------
+# ---- 1) Doorbell ding -> show Wyze Front Door camera ---------------------------
 - id: camera_popup_doorbell
   alias: "Camera - Popup on doorbell ding"
   mode: restart          # a new ding restarts the 30s timer
@@ -42,7 +42,7 @@
         size: wide
         content:
           type: picture-entity
-          entity: camera.front_door_live_view
+          entity: camera.front_door    # Wyze Front Door camera (via wyze-bridge)
           camera_view: live
           show_state: false
           show_name: false

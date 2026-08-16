@@ -165,18 +165,18 @@ views:
                     template: clock_panel
                     name: Hello
 
-              # ---- BOTTOM: 3 Ring camera thumbnails ----
+              # ---- BOTTOM: 3 camera thumbnails (2 Wyze + 1 Ring) ----
               - view_layout:
                   grid-area: cameras
                 type: horizontal-stack
                 cards:
                   - type: picture-entity
-                    entity: camera.driveway_live_view
+                    entity: camera.car_park
                     name: Driveway
                     camera_view: live
                     show_state: false
                   - type: picture-entity
-                    entity: camera.front_door_live_view
+                    entity: camera.front_door
                     name: Front Door
                     camera_view: live
                     show_state: false
@@ -278,18 +278,18 @@ views:
                       border-radius: 18px;
                     }
 
-              # ---- BOTTOM LEFT: camera thumbnails ----
+              # ---- BOTTOM LEFT: camera thumbnails (2 Wyze + 1 Ring) ----
               - view_layout:
                   grid-area: cams
                 type: horizontal-stack
                 cards:
                   - type: picture-entity
-                    entity: camera.driveway_live_view
+                    entity: camera.car_park
                     name: Driveway
                     camera_view: live
                     show_state: false
                   - type: picture-entity
-                    entity: camera.front_door_live_view
+                    entity: camera.front_door
                     name: Front Door
                     camera_view: live
                     show_state: false

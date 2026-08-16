@@ -307,12 +307,19 @@ never touches the isolated camera VLAN.**
    docker compose -f docker-compose-wyze.yml up -d
    ```
 3. Open `http://<bridge-host>:5000` to confirm cameras appear and stream.
-4. In Home Assistant, add each stream as a **Generic Camera**
+4. In Home Assistant, add each Wyze stream as a **Generic Camera**
    (Settings → Devices & Services → Add → *Generic Camera*):
-   - Stream source: `rtsp://<bridge-host>:8554/<camera-nickname>`
-   - (nickname = your Wyze camera name, lowercased, spaces→dashes)
-5. Swap the Ring entities in `family_dashboard.yaml` for your new Wyze camera
-   entities if you'd rather show those.
+   - **Front Door** camera:
+     - Stream source: `rtsp://<bridge-host>:8554/front-door`
+     - Entity ID: `camera.front_door`
+   - **Car Park** camera:
+     - Stream source: `rtsp://<bridge-host>:8554/car-park`
+     - Entity ID: `camera.car_park`
+   - (Bridge converts camera names to lowercase with spaces→dashes)
+5. The dashboard is **already configured** to use:
+   - `camera.front_door` (Wyze Front Door) — shown on doorbell popup & thumbnails
+   - `camera.car_park` (Wyze Car Park) — shown as "Driveway" on thumbnails
+   - `camera.outside_deck_live_view` (Ring Back Deck) — shown as "Deck" on thumbnails
 
 > **If cameras still time out (`IOTC_ER_TIMEOUT`):** current v4 firmware can be
 > flaky over P2P. Confirm the stream loads in the bridge's own web UI (:5000)
