@@ -11,7 +11,7 @@
 # instantly when the rotation automation changes that helper.
 #
 # CUSTOM CARDS REQUIRED (install via HACS — see README §5):
-#   * atomic-calendar-revamp  (month grid + agenda list)
+#   * atomic-calendar-revive  (month grid + agenda list)
 #   * lovelace-card-mod       (custom CSS: `card_mod:` / `style:` blocks)
 #   * lovelace-state-switch   (the 3-screen switcher)
 #   * browser_mod             (camera popups — used by automations, not here)
@@ -106,11 +106,11 @@ views:
               # ---- LEFT: full month calendar grid ----
               - view_layout:
                   grid-area: calendar
-                type: custom:atomic-calendar-revamp
+                type: custom:atomic-calendar-revive
                 name: " "
                 showDate: false
                 enableModeChange: false
-                defaultMode: Month           # month grid like Mango
+                defaultMode: Calendar        # month grid like Mango
                 firstDayOfWeek: 0            # 0 = Sunday
                 showWeekNumber: false
                 calCellDate: true
@@ -232,7 +232,7 @@ views:
               # ---- RIGHT TOP: next 6 days agenda list ----
               - view_layout:
                   grid-area: agenda
-                type: custom:atomic-calendar-revamp
+                type: custom:atomic-calendar-revive
                 name: " "
                 showDate: false
                 enableModeChange: false
