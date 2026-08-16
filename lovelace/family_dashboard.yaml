@@ -121,7 +121,7 @@ views:
                 calEventTime: false
                 # Color each calendar's events (matches Mango palette).
                 entities:
-                  - entity: calendar.family_icloud
+                  - entity: calendar.icloud_family_calendar
                     color: "#2e7d32"          # GREEN  - iCloud
                   - entity: calendar.google_mike
                     color: "#1565c0"          # BLUE   - Mike
@@ -246,7 +246,7 @@ views:
                 sortByStartTime: true
                 untilText: "til"
                 entities:
-                  - entity: calendar.family_icloud
+                  - entity: calendar.icloud_family_calendar
                     color: "#2e7d32"
                   - entity: calendar.google_mike
                     color: "#1565c0"

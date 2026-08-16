@@ -29,7 +29,7 @@
 #
 #   Name typed in UI             Expected entity ID
 #   ─────────────────────────    ──────────────────────────────
-#   "Family iCloud"          ->  calendar.family_icloud
+#   "iCloud Family Calendar" ->  calendar.icloud_family_calendar
 #   "Google Mike"            ->  calendar.google_mike
 #   "Google Juno"            ->  calendar.google_juno
 #   "US Holidays"            ->  calendar.us_holidays
